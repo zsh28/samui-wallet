@@ -15,7 +15,16 @@ export function formatBalance({
     return `-${formatBalance({ balance: -balanceNum, decimals })}`
   }
 
-  const balanceFloat = Number(balanceNum) / 10 ** decimals
+  const effectiveDecimals = Math.min(decimals, 15)
+  const balanceFloat = Number(balanceNum) / 10 ** effectiveDecimals
+
+  if (decimals <= 6) {
+    if (balanceFloat >= 1_000_000) {
+      const scaledValue = balanceFloat / 1_000_000
+      return formatTokenValue(scaledValue, decimals)
+    }
+    return formatTokenValue(balanceFloat, decimals)
+  }
 
   if (balanceFloat >= 1_000_000_000_000) {
     return `${formatTokenValue(balanceFloat / 1_000_000_000_000, 2)}T`
@@ -74,13 +83,10 @@ export function formatBalanceUsd({
   // Handle negative values
   if (usdValue < 0) {
     const absValue = Math.abs(usdValue)
-    if (absValue < 0.001) {
-      return '<$0.001'
-    }
     return `-${formatUsdValue(absValue)}`
   }
 
-  if (usdValue < 0.001) {
+  if (usdValue < 0.00001) {
     return '<$0.001'
   }
 
@@ -92,7 +98,7 @@ export function formatBalanceUsd({
   }
 
   return getUsdFormatter({
-    maximumFractionDigits: 4,
+    maximumFractionDigits: 7,
     minimumFractionDigits: 0,
   }).format(usdValue)
 }

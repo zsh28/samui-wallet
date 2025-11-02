@@ -8,7 +8,8 @@ import { useGetTokenAccounts } from '@workspace/solana-client-react/use-get-toke
 import { NATIVE_MINT } from '@workspace/solana-client/constants'
 import { useMemo } from 'react'
 
-import { formatBalance, formatBalanceUsd } from './format-balance.js'
+import { formatBalanceUsd } from './format-balance-usd.js'
+import { formatBalance } from './format-balance.js'
 
 export interface TokenBalance {
   balance: bigint
@@ -93,7 +94,7 @@ function mergeData({
     balanceUsd: formatBalanceUsd({
       balance,
       decimals: solDecimals,
-      usdPrice: solMetadata?.usdPrice ?? 0,
+      usdPrice: solMetadata?.usdPrice,
     }),
     decimals: solDecimals,
     metadata: solMetadata,
@@ -112,7 +113,7 @@ function mergeData({
       balanceUsd: formatBalanceUsd({
         balance,
         decimals,
-        usdPrice: tokenMetadata?.usdPrice ?? 0,
+        usdPrice: tokenMetadata?.usdPrice,
       }),
       decimals,
       metadata: tokenMetadata,

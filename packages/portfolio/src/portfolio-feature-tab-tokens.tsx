@@ -9,7 +9,7 @@ import { useCallback, useMemo } from 'react'
 import type { TokenBalance } from './data-access/use-get-token-metadata.js'
 import type { ClusterWallet } from './portfolio-routes-loaded.js'
 
-import { formatUsdValue } from './data-access/format-balance.js'
+import { formatUsdValue } from './data-access/format-balance-usd.js'
 import { useGetTokenBalances } from './data-access/use-get-token-metadata.js'
 import { PortfolioUiRequestAirdrop } from './ui/portfolio-ui-request-airdrop.js'
 import { PortfolioUiTokenBalances } from './ui/portfolio-ui-token-balances.js'

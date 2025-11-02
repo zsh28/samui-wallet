@@ -1,158 +1,55 @@
-const formatters = new Map<string, Intl.NumberFormat>()
+const tokenFormatters = new Map<string, Intl.NumberFormat>()
 
-export function formatBalance({
-  balance = 0,
-  decimals,
-}: {
-  balance: bigint | number | undefined
-  decimals: number
-}): string {
-  const balanceNum = typeof balance === 'bigint' ? balance : BigInt(balance || 0)
-
-  if (balanceNum === 0n) return '0'
-
-  if (balanceNum < 0n) {
-    return `-${formatBalance({ balance: -balanceNum, decimals })}`
+export function formatBalance({ balance, decimals }: { balance: bigint; decimals: number }): string {
+  if (balance === 0n) {
+    return '0'
   }
 
-  const effectiveDecimals = Math.min(decimals, 15)
-  const balanceFloat = Number(balanceNum) / 10 ** effectiveDecimals
-
-  if (decimals <= 6) {
-    if (balanceFloat >= 1_000_000) {
-      const scaledValue = balanceFloat / 1_000_000
-      return formatTokenValue(scaledValue, decimals)
-    }
-    return formatTokenValue(balanceFloat, decimals)
+  if (balance < 0n) {
+    return `-${formatBalance({ balance: -balance, decimals })}`
   }
 
-  if (balanceFloat >= 1_000_000_000_000) {
-    return `${formatTokenValue(balanceFloat / 1_000_000_000_000, 2)}T`
-  }
+  const value = balanceToNumber(balance, decimals)
 
-  if (balanceFloat >= 1_000_000_000) {
-    return `${formatTokenValue(balanceFloat / 1_000_000_000, 2)}B`
-  }
-
-  if (balanceFloat >= 1_000_000) {
-    return `${formatTokenValue(balanceFloat / 1_000_000, 2)}M`
-  }
-
-  if (balanceFloat < 0.00001) {
+  // Show threshold for very small amounts instead of 0
+  if (value < 0.00001 && value > 0) {
     return '<0.00001'
   }
 
-  const maxFractionDigits = Math.min(6, decimals)
-  return formatTokenValue(balanceFloat, maxFractionDigits)
-}
+  // Use standard suffixes for large numbers eg 1.23M, 4.56B, 7.89T
+  if (value >= 1_000_000_000_000) {
+    const scaled = value / 1_000_000_000_000
+    return `${getTokenFormatter({ maximumFractionDigits: 2 }).format(scaled)}T`
+  }
 
-function formatTokenValue(value: number, maxFractionDigits: number): string {
-  const formatter = getFormatter({
-    maximumFractionDigits: maxFractionDigits,
+  if (value >= 1_000_000_000) {
+    const scaled = value / 1_000_000_000
+    return `${getTokenFormatter({ maximumFractionDigits: 2 }).format(scaled)}B`
+  }
+
+  if (value >= 1_000_000) {
+    const scaled = value / 1_000_000
+    return `${getTokenFormatter({ maximumFractionDigits: 2 }).format(scaled)}M`
+  }
+
+  // Standard token formatting with up to 5 decimals
+  return getTokenFormatter({
+    maximumFractionDigits: 5,
     minimumFractionDigits: 0,
-  })
-  return formatter.format(value)
+  }).format(value)
 }
 
-function getFormatter(options: Intl.NumberFormatOptions): Intl.NumberFormat {
+// Convert balance from raw units to decimal number
+function balanceToNumber(balance: bigint, decimals: number): number {
+  return Number(balance) / Math.pow(10, decimals)
+}
+
+function getTokenFormatter(options: Intl.NumberFormatOptions): Intl.NumberFormat {
   const key = JSON.stringify(options)
-  if (!formatters.has(key)) {
-    formatters.set(key, new Intl.NumberFormat('en-US', options))
+  let formatter = tokenFormatters.get(key)
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('en-US', options)
+    tokenFormatters.set(key, formatter)
   }
-  return formatters.get(key)!
-}
-
-const usdFormatters = new Map<string, Intl.NumberFormat>()
-
-export function formatBalanceUsd({
-  balance = 0,
-  decimals,
-  usdPrice,
-}: {
-  balance: bigint | number | undefined
-  decimals: number
-  usdPrice: number | undefined
-}): string {
-  if (usdPrice === undefined) return '$0'
-
-  const balanceNum = typeof balance === 'bigint' ? balance : BigInt(balance || 0)
-  const usdValue = (usdPrice * Number(balanceNum)) / 10 ** decimals
-
-  if (usdValue === 0) return '$0'
-
-  // Handle negative values
-  if (usdValue < 0) {
-    const absValue = Math.abs(usdValue)
-    return `-${formatUsdValue(absValue)}`
-  }
-
-  if (usdValue < 0.00001) {
-    return '<$0.001'
-  }
-
-  if (usdValue >= 1) {
-    return getUsdFormatter({
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 2,
-    }).format(usdValue)
-  }
-
-  return getUsdFormatter({
-    maximumFractionDigits: 7,
-    minimumFractionDigits: 0,
-  }).format(usdValue)
-}
-
-export function formatUsdValue(usdValue: number): string {
-  // Handle special cases
-  if (Number.isNaN(usdValue) || !Number.isFinite(usdValue)) {
-    return '$0'
-  }
-
-  // Handle zero case
-  if (usdValue === 0) return '$0'
-
-  // Handle negative values
-  if (usdValue < 0) {
-    const absValue = Math.abs(usdValue)
-    // Handle very small negative values
-    if (absValue < 0.001) {
-      return '<$0.001'
-    }
-    return `-${formatUsdValue(absValue)}`
-  }
-
-  // Handle very small values
-  if (usdValue < 0.001) {
-    return '<$0.001'
-  }
-
-  // Handle normal values (>= $0.001)
-  if (usdValue >= 1) {
-    return getUsdFormatter({
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 2,
-    }).format(usdValue)
-  }
-
-  // Handle fractional values between $0.001 and $1
-  return getUsdFormatter({
-    maximumSignificantDigits: 5,
-    minimumFractionDigits: 0,
-  }).format(usdValue)
-}
-
-function getUsdFormatter(options: Intl.NumberFormatOptions): Intl.NumberFormat {
-  const key = JSON.stringify(options)
-  if (!usdFormatters.has(key)) {
-    usdFormatters.set(
-      key,
-      new Intl.NumberFormat('en-US', {
-        currency: 'USD',
-        style: 'currency',
-        ...options,
-      }),
-    )
-  }
-  return usdFormatters.get(key)!
+  return formatter
 }

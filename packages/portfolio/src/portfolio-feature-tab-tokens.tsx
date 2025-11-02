@@ -9,6 +9,7 @@ import { useCallback, useMemo } from 'react'
 import type { TokenBalance } from './data-access/use-get-token-metadata.js'
 import type { ClusterWallet } from './portfolio-routes-loaded.js'
 
+import { formatUsdValue } from './data-access/format-balance.js'
 import { useGetTokenBalances } from './data-access/use-get-token-metadata.js'
 import { PortfolioUiRequestAirdrop } from './ui/portfolio-ui-request-airdrop.js'
 import { PortfolioUiTokenBalances } from './ui/portfolio-ui-token-balances.js'
@@ -38,10 +39,7 @@ export function PortfolioFeatureTabTokens(props: ClusterWallet) {
       return acc + itemBalance
     }, 0)
 
-    return new Intl.NumberFormat('en-US', {
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 0,
-    }).format(balance)
+    return formatUsdValue(balance)
   }, [balances])
 
   const isLoading = sendSolMutation.isPending || sendSplMutation.isPending
@@ -110,7 +108,7 @@ export function PortfolioFeatureTabTokens(props: ClusterWallet) {
 
   return (
     <div className="p-4 space-y-6">
-      <div className="text-4xl font-bold text-center">$ {totalBalance}</div>
+      <div className="text-4xl font-bold text-center">{totalBalance}</div>
       <PortfolioUiWalletButtons balances={balances} {...props} isLoading={isLoading} send={handleSendToken} />
       <PortfolioUiRequestAirdrop
         cluster={props.cluster}

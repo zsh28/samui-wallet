@@ -52,3 +52,101 @@ function getFormatter(options: Intl.NumberFormatOptions): Intl.NumberFormat {
   }
   return formatters.get(key)!
 }
+
+const usdFormatters = new Map<string, Intl.NumberFormat>()
+
+export function formatBalanceUsd({
+  balance = 0,
+  decimals,
+  usdPrice,
+}: {
+  balance: bigint | number | undefined
+  decimals: number
+  usdPrice: number | undefined
+}): string {
+  if (usdPrice === undefined) return '$0'
+
+  const balanceNum = typeof balance === 'bigint' ? balance : BigInt(balance || 0)
+  const usdValue = (usdPrice * Number(balanceNum)) / 10 ** decimals
+
+  if (usdValue === 0) return '$0'
+
+  // Handle negative values
+  if (usdValue < 0) {
+    const absValue = Math.abs(usdValue)
+    if (absValue < 0.001) {
+      return '<$0.001'
+    }
+    return `-${formatUsdValue(absValue)}`
+  }
+
+  if (usdValue < 0.001) {
+    return '<$0.001'
+  }
+
+  if (usdValue >= 1) {
+    return getUsdFormatter({
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 2,
+    }).format(usdValue)
+  }
+
+  return getUsdFormatter({
+    maximumFractionDigits: 4,
+    minimumFractionDigits: 0,
+  }).format(usdValue)
+}
+
+export function formatUsdValue(usdValue: number): string {
+  // Handle special cases
+  if (Number.isNaN(usdValue) || !Number.isFinite(usdValue)) {
+    return '$0'
+  }
+
+  // Handle zero case
+  if (usdValue === 0) return '$0'
+
+  // Handle negative values
+  if (usdValue < 0) {
+    const absValue = Math.abs(usdValue)
+    // Handle very small negative values
+    if (absValue < 0.001) {
+      return '<$0.001'
+    }
+    return `-${formatUsdValue(absValue)}`
+  }
+
+  // Handle very small values
+  if (usdValue < 0.001) {
+    return '<$0.001'
+  }
+
+  // Handle normal values (>= $0.001)
+  if (usdValue >= 1) {
+    return getUsdFormatter({
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 2,
+    }).format(usdValue)
+  }
+
+  // Handle fractional values between $0.001 and $1
+  return getUsdFormatter({
+    maximumSignificantDigits: 5,
+    minimumFractionDigits: 0,
+  }).format(usdValue)
+}
+
+function getUsdFormatter(options: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const key = JSON.stringify(options)
+  if (!usdFormatters.has(key)) {
+    usdFormatters.set(
+      key,
+      new Intl.NumberFormat('en-US', {
+        currency: 'USD',
+        style: 'currency',
+        ...options,
+      }),
+    )
+  }
+  return usdFormatters.get(key)!
+}

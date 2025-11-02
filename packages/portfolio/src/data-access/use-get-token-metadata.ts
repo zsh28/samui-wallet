@@ -8,8 +8,7 @@ import { useGetTokenAccounts } from '@workspace/solana-client-react/use-get-toke
 import { NATIVE_MINT } from '@workspace/solana-client/constants'
 import { useMemo } from 'react'
 
-import { formatBalanceUsd } from './format-balance-usd.js'
-import { formatBalance } from './format-balance.js'
+import { formatBalance, formatBalanceUsd } from './format-balance.js'
 
 export interface TokenBalance {
   balance: bigint

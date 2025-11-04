@@ -13,13 +13,15 @@ export function formatBalanceUsd({
     return '$0.00'
   }
 
-  const balanceNum = typeof balance === 'bigint' ? balance : BigInt(balance || 0)
+  // Handle undefined explicitly to avoid unnecessary BigInt creation
+  const balanceNum = typeof balance === 'bigint' ? balance : balance ? BigInt(balance) : 0n
 
   if (balanceNum === 0n) {
     return '$0.00'
   }
 
-  const tokenValue = Number(balanceNum) / Math.pow(10, decimals)
+  // Use string manipulation for large bigints to avoid precision loss
+  const tokenValue = balanceToNumber(balanceNum, decimals)
   const usdValue = tokenValue * usdPrice
 
   return formatUsdValue(usdValue)
@@ -49,8 +51,30 @@ export function formatUsdValue(usdValue: number): string {
   return isNegative ? `-${formatted}` : formatted
 }
 
+// Convert bigint balance to number considering decimals
+function balanceToNumber(balance: bigint, decimals: number): number {
+  // Convert bigint to string for manipulation
+  const balanceStr = balance.toString()
+  const isNegative = balance < 0n
+  const absStr = isNegative ? balanceStr.slice(1) : balanceStr
+
+  if (absStr.length <= decimals) {
+    // Pad with leading zeros if necessary
+    const padded = absStr.padStart(decimals, '0')
+    const result = `0.${padded}`
+    return Number(isNegative ? `-${result}` : result)
+  }
+
+  // Split into integer and fractional parts
+  const intPart = absStr.slice(0, absStr.length - decimals) || '0'
+  const fracPart = absStr.slice(absStr.length - decimals)
+  const result = `${intPart}.${fracPart}`
+  return Number(isNegative ? `-${result}` : result)
+}
+
 function getUsdFormatter(options: Intl.NumberFormatOptions): Intl.NumberFormat {
-  const key = JSON.stringify(options)
+  // Create a unique key for the formatter based on options
+  const key = `max:${options.maximumFractionDigits ?? ''}|min:${options.minimumFractionDigits ?? ''}`
   let formatter = usdFormatters.get(key)
   if (!formatter) {
     formatter = new Intl.NumberFormat('en-US', {
